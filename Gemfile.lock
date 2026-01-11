@@ -2,6 +2,7 @@ PATH
   remote: .
   specs:
     vtx (0.1.0)
+      zeitwerk (>= 2)
 
 GEM
   remote: https://rubygems.org/
@@ -70,6 +71,7 @@ GEM
       unicode-emoji (~> 4.1)
     unicode-emoji (4.2.0)
     yard (0.9.38)
+    zeitwerk (2.7.4)
 
 PLATFORMS
   ruby
@@ -119,6 +121,7 @@ CHECKSUMS
   unicode-emoji (4.2.0) sha256=519e69150f75652e40bf736106cfbc8f0f73aa3fb6a65afe62fefa7f80b0f80f
   vtx (0.1.0)
   yard (0.9.38) sha256=721fb82afb10532aa49860655f6cc2eaa7130889df291b052e1e6b268283010f
+  zeitwerk (2.7.4) sha256=2bef90f356bdafe9a6c2bd32bcd804f83a4f9b8bc27f3600fff051eb3edcec8b
 
 BUNDLED WITH
   4.0.3
