@@ -30,6 +30,10 @@ module Vtx
       @buffer = String.new(encoding: Encoding::UTF_8)
       @mutex = Mutex.new
       @state = State.new
+
+      @parser = EventParser.new
+
+      @event_queue = []
     end
 
     def raw_mode? = @state.raw_mode
@@ -279,8 +283,12 @@ module Vtx
     end
 
     def sync
+      command { Sequences::SYNC_OUTPUT_ENABLE }
+
       yield
     ensure
+      command { Sequences::SYNC_OUTPUT_DISABLE }
+
       flush
     end
 
@@ -298,10 +306,36 @@ module Vtx
     end
 
     def size = @state.size ||= query_size
-    def size! = @state.size = query_size
+    def refresh_size! = @state.size = query_size
+
+    def resize(cols, rows)
+      @state.size = [rows, cols]
+
+      self
+    end
 
     def read_event(timeout: nil)
-      raise NotImplementedError
+      deadline = timeout ? Time.now + timeout : nil
+
+      loop do
+        event = @event_queue.shift
+
+        return event unless event.nil?
+
+        return unless wait_for_input?(deadline)
+
+        bytes = begin
+          read_nonblock(4096)
+        rescue IO::WaitReadable, EOFError
+          nil
+        end
+
+        next if bytes.nil?
+
+        events = @parser.feed(bytes)
+
+        return enqueue_and_return(events) unless events.empty?
+      end
     end
 
     def each_event(timeout: nil)
@@ -337,6 +371,48 @@ module Vtx
       @mutex.synchronize { @buffer << yield }
 
       self
+    end
+
+    def wait_for_input?(deadline)
+      return wait_for_pending_escape?(deadline) if @parser.pending?
+
+      wait_for_new_input?(deadline)
+    end
+
+    def wait_for_pending_escape?(deadline)
+      remaining = remaining_time(deadline)
+      remaining = [remaining, @parser.pending_timeout].min if remaining
+      remaining ||= @parser.pending_timeout
+
+      if remaining <= 0 || !@input.wait_readable(remaining)
+        events = @parser.flush
+        @event_queue.concat(events)
+        return !events.empty? || (deadline.nil? || Time.now < deadline)
+      end
+
+      true
+    end
+
+    def wait_for_new_input?(deadline)
+      remaining = remaining_time(deadline)
+      return false if remaining&.negative?
+
+      @input.wait_readable(remaining)
+    end
+
+    def remaining_time(deadline)
+      deadline ? deadline - Time.now : nil
+    end
+
+    def enqueue(events)
+      @event_queue.concat(events)
+    end
+
+    def enqueue_and_return(events)
+      return if events.empty?
+
+      enqueue(events[1..]) if events.length > 1
+      events.first
     end
 
     def resolve_style(style, options)

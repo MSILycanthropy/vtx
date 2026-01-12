@@ -16,6 +16,7 @@ module Vtx
     CURSOR_SAVE = "\e[s"
     CURSOR_RESTORE = "\e[u"
     CURSOR_HOME = "\e[H"
+    CURSOR_POSITION_QUERY = "\e[6n"
 
     ALTERNATE_SCREEN_ENTER = "\e[?1049h"
     ALTERNATE_SCREEN_LEAVE = "\e[?1049l"
@@ -156,6 +157,15 @@ module Vtx
       else "c"
       end
       "\e]52;#{target_code};#{encoded}\e\\"
+    end
+
+    def request_clipboard(target: :clipboard)
+      target_code = case target
+      when :clipboard then "c"
+      when :primary then "p"
+      else "c"
+      end
+      "\e]52;#{target_code};?\e\\"
     end
 
     def foreground(color)

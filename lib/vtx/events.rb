@@ -59,10 +59,4 @@ module Vtx
       "Focus(focused: #{focused})"
     end
   end
-
-  Resize = Data.define(:rows, :cols) do
-    def inspect
-      "Resize(rows: #{rows}, cols: #{cols})"
-    end
-  end
 end

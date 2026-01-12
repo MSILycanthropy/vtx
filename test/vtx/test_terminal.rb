@@ -80,7 +80,7 @@ class TestTerminal < Minitest::Test
 
   def test_sync_auto_flushes
     @term.sync { @term.print("hello") }
-    assert_equal("hello", @output.string)
+    assert_equal("\e[?2026hhello\e[?2026l", @output.string)
   end
 
   def test_read_delegates_to_input
