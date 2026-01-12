@@ -315,7 +315,7 @@ module Vtx
     def size = @state.size ||= query_size
     def refresh_size! = @state.size = query_size
 
-    def resize(cols, rows)
+    def resize(rows, cols)
       @state.size = [rows, cols]
 
       self
