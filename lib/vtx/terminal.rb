@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "io/console"
+
 module Vtx
   # Main terminal interface
   #
@@ -45,12 +47,15 @@ module Vtx
     def cursor_visible? = @state.cursor_visible
     def tty? = @input.tty? && @output.tty?
 
+    def line_ending
+      @state.raw_mode ? "\r\n" : "\n"
+    end
+
     def enable_raw_mode
       @mutex.synchronize do
         return self if @state.raw_mode
         return self unless @input.tty?
 
-        require "io/console"
         @input.raw!
         @state.raw_mode = true
       end
@@ -256,13 +261,15 @@ module Vtx
     end
 
     def puts(*args, style: nil, **style_options)
+      ending = line_ending
+
       str = if args.empty?
-        "\n"
+        ending
       elsif style || style_options.any?
         resolved = resolve_style(style, style_options)
-        args.map { |a| "#{resolved}#{a}#{Sequences::RESET_STYLE}\n" }.join
+        args.map { |a| "#{resolved}#{a}#{Sequences::RESET_STYLE}#{ending}" }.join
       else
-        args.map { |a| "#{a}\n" }.join
+        args.map { |a| "#{a}#{ending}" }.join
       end
 
       write(str)
