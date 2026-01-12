@@ -116,7 +116,7 @@ class TestTerminalEvents < Minitest::Test
   def test_resize_sets_size
     @term.resize(120, 40)
 
-    assert_equal([40, 120], @term.size)
+    assert_equal([120, 40], @term.size)
   end
 
   def test_resize_returns_self

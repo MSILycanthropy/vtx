@@ -22,8 +22,8 @@ module Vtx
         self
       end
 
-      def mouse_capture(mode: :normal)
-        @terminal.enable_mouse_capture(mode:)
+      def mouse_capture(...)
+        @terminal.enable_mouse_capture(...)
         @restore << :disable_mouse_capture
 
         self
@@ -46,6 +46,13 @@ module Vtx
       def hidden_cursor
         @terminal.hide_cursor
         @restore << :show_cursor
+
+        self
+      end
+
+      def cursor_style(...)
+        @terminal.cursor_style(...)
+        @restore << :reset_cursor_style
 
         self
       end

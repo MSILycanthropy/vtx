@@ -18,6 +18,8 @@ module Vtx
     CURSOR_HOME = "\e[H"
     CURSOR_POSITION_QUERY = "\e[6n"
 
+    CURSOR_STYLE_DEFAULT = "\e[0 q"
+
     ALTERNATE_SCREEN_ENTER = "\e[?1049h"
     ALTERNATE_SCREEN_LEAVE = "\e[?1049l"
     BRACKETED_PASTE_ENABLE = "\e[?2004h"
@@ -176,6 +178,18 @@ module Vtx
     def background(color)
       codes = Color.parse(color, foreground: false)
       codes.empty? ? "" : "\e[#{codes.join(";")}m"
+    end
+
+    def cursor_style(style = :default, blink: true)
+      code = case style
+      when :default then 0
+      when :block then blink ? 1 : 2
+      when :underline then blink ? 3 : 4
+      when :bar then blink ? 5 : 6
+      else 0
+      end
+
+      "\e[#{code} q"
     end
   end
 end

@@ -75,6 +75,14 @@ module Vtx
       self
     end
 
+    def with_raw_mode
+      enable_raw_mode
+
+      yield
+    ensure
+      disable_raw_mode
+    end
+
     def enter_alternate_screen
       @mutex.synchronize do
         return self if @state.alternate_screen
@@ -95,6 +103,13 @@ module Vtx
       end
 
       self
+    end
+
+    def with_alternate_screen
+      enter_alternate_screen
+      yield
+    ensure
+      leave_alternate_screen
     end
 
     def enable_bracketed_paste
@@ -119,6 +134,14 @@ module Vtx
       self
     end
 
+    def with_bracketed_paste
+      enable_bracketed_paste
+
+      yield
+    ensure
+      disable_bracketed_paste
+    end
+
     def enable_focus_events
       @mutex.synchronize do
         return self if @state.focus_events
@@ -141,6 +164,14 @@ module Vtx
       self
     end
 
+    def with_focus
+      enable_focus_events
+
+      yield
+    ensure
+      disable_focus_events
+    end
+
     def show_cursor
       @mutex.synchronize do
         return self if @state.cursor_visible
@@ -161,6 +192,26 @@ module Vtx
       end
 
       self
+    end
+
+    def with_hidden_cursor
+      originally_shown = cursor_visible?
+
+      hide_cursor
+
+      yield
+    ensure
+      show_cursor if originally_shown
+    end
+
+    def with_shown_cursor
+      originally_hidden = cursor_visible?
+
+      show_cursor
+
+      yield
+    ensure
+      hide_cursor if originally_hidden
     end
 
     def enable_mouse_capture(mode: :normal)
@@ -197,6 +248,25 @@ module Vtx
       end
 
       self
+    end
+
+    def with_mouse_capture(...)
+      enable_mouse_capture(...)
+
+      yield
+    ensure
+      disable_mouse_capture
+    end
+
+    def cursor_style(...) = command { Sequences.cursor_style(...) }
+    def reset_cursor_style = command { Sequences::CURSOR_STYLE_DEFAULT }
+
+    def with_cursor_style(...)
+      cursor_style(...)
+
+      yield
+    ensure
+      reset_cursor_style
     end
 
     def move_to(...) = command { Sequences.move_to(...) }
