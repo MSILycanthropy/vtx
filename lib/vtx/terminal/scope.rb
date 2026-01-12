@@ -57,7 +57,7 @@ module Vtx
         self
       end
 
-      def call
+      def run
         yield @terminal
       ensure
         @restore.reverse_each { |method| @terminal.send(method) }
