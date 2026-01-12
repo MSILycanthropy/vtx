@@ -34,66 +34,6 @@ module Vtx
 
     attr_reader(*ATTRIBUTES)
 
-    def foreground(color)
-      @foreground = color
-
-      self
-    end
-
-    def background(color)
-      @background = color
-
-      self
-    end
-
-    def bold(value = true)
-      @bold = value
-
-      self
-    end
-
-    def dim(value = true)
-      @dim = value
-
-      self
-    end
-
-    def italic(value = true)
-      @italic = value
-
-      self
-    end
-
-    def underline(value = true)
-      @underline = value
-
-      self
-    end
-
-    def blink(value = true)
-      @blink = value
-
-      self
-    end
-
-    def reverse(value = true)
-      @reverse = value
-
-      self
-    end
-
-    def hidden(value = true)
-      @hidden = value
-
-      self
-    end
-
-    def strikethrough(value = true)
-      @strikethrough = value
-
-      self
-    end
-
     def merge(**options)
       Style.new(
         foreground: options.fetch(:foreground, @foreground),

@@ -1,0 +1,3 @@
+[workspace]
+members = ["ext/vtx_parser"]
+resolver = "2"

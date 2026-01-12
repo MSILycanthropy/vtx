@@ -1,0 +1,12 @@
+[package]
+name = "vtx_parser"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+magnus = { version = "0.8", features = ["rb-sys"] }
+vte = { version = "0.15", default-features = false, features = ["std"] }

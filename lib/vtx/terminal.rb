@@ -3,7 +3,7 @@
 module Vtx
   # Main terminal interface
   #
-  # Wraps an adapter and provides buffered output with terminal manipulation
+  # Provides buffered output with terminal manipulation
   #
   # @example Basic Usage
   #   terminal = Vtx::Terminal.new
@@ -22,148 +22,256 @@ module Vtx
   #   end
   #
   class Terminal
-    def initialize(input: $stdin, output: $stdout, adapter: nil)
-      @adapter = adapter || Adapters::Ansi.new(input:, output:)
+    attr_reader :input, :output
+
+    def initialize(input: $stdin, output: $stdout)
+      @input = input
+      @output = output
       @buffer = String.new(encoding: Encoding::UTF_8)
       @mutex = Mutex.new
       @state = State.new
     end
 
-    class << self
-      private
-
-      def stateful_command(name, state_key, state_value, adapter_method = name)
-        define_method(name) do |*args, **kwargs|
-          @mutex.synchronize do
-            return self if @state.public_send(state_key) == state_value
-
-            result = if kwargs.any?
-              @adapter.public_send(adapter_method, *args, **kwargs)
-            elsif args.any?
-              @adapter.public_send(adapter_method, *args)
-            else
-              @adapter.public_send(adapter_method)
-            end
-
-            return self unless result
-
-            @buffer << result if result.is_a?(String)
-            @state.public_send(:"#{state_key}=", state_value)
-          end
-
-          self
-        end
-      end
-
-      def delegate_command(*methods)
-        methods.each do |method|
-          define_method(method) do |*args, **kwargs, &block|
-            command { @adapter.public_send(method, *args, **kwargs, &block) }
-          end
-        end
-      end
-    end
-
-    def raw_mode? = @state.raw_mode?
-    def alternate_screen? = @state.alternate_screen?
+    def raw_mode? = @state.raw_mode
+    def alternate_screen? = @state.alternate_screen
     def mouse_capture? = !@state.mouse_capture.nil?
     def mouse_capture = @state.mouse_capture
-    def bracketed_paste? = @state.bracketed_paste?
-    def focus_events? = @state.focus_events?
-    def cursor_visible? = @state.cursor_visible?
-    def tty? = @adapter.input.tty? && @adapter.output.tty?
+    def bracketed_paste? = @state.bracketed_paste
+    def focus_events? = @state.focus_events
+    def cursor_visible? = @state.cursor_visible
+    def tty? = @input.tty? && @output.tty?
 
-    stateful_command :enable_raw_mode, :raw_mode, true
-    stateful_command :disable_raw_mode, :raw_mode, false
-    stateful_command :enter_alternate_screen, :alternate_screen, true
-    stateful_command :leave_alternate_screen, :alternate_screen, false
-    stateful_command :enable_bracketed_paste, :bracketed_paste, true
-    stateful_command :disable_bracketed_paste, :bracketed_paste, false
-    stateful_command :enable_focus_events, :focus_events, true
-    stateful_command :disable_focus_events, :focus_events, false
-    stateful_command :show_cursor, :cursor_visible, true
-    stateful_command :hide_cursor, :cursor_visible, false
-    stateful_command :disable_mouse_capture, :mouse_capture, nil
+    def enable_raw_mode
+      @mutex.synchronize do
+        return self if @state.raw_mode
+        return self unless @input.tty?
 
-    delegate_command :move_to,
-      :move_up,
-      :move_down,
-      :move_forward,
-      :move_back,
-      :move_home,
-      :move_to_column,
-      :move_to_row,
-      :move_to_next_line,
-      :move_to_prev_line,
-      :save_cursor,
-      :restore_cursor,
-      :clear,
-      :clear_below,
-      :clear_above,
-      :clear_line,
-      :clear_line_right,
-      :clear_line_left,
-      :scroll_up,
-      :scroll_down,
-      :set_scroll_region,
-      :reset_scroll_region,
-      :insert_lines,
-      :delete_lines,
-      :insert_chars,
-      :delete_chars,
-      :erase_chars,
-      :title,
-      :icon_name,
-      :bell,
-      :notify,
-      :copy_to_clipboard,
-      :request_clipboard,
-      :hyperlink,
-      :hyperlink_start,
-      :hyperlink_end
+        require "io/console"
+        @input.raw!
+        @state.raw_mode = true
+      end
+
+      self
+    end
+
+    def disable_raw_mode
+      @mutex.synchronize do
+        return self unless @state.raw_mode
+        return self unless @input.tty?
+
+        @input.cooked!
+        @state.raw_mode = false
+      end
+
+      self
+    end
+
+    def enter_alternate_screen
+      @mutex.synchronize do
+        return self if @state.alternate_screen
+
+        @buffer << Sequences::ALTERNATE_SCREEN_ENTER
+        @state.alternate_screen = true
+      end
+
+      self
+    end
+
+    def leave_alternate_screen
+      @mutex.synchronize do
+        return self unless @state.alternate_screen
+
+        @buffer << Sequences::ALTERNATE_SCREEN_LEAVE
+        @state.alternate_screen = false
+      end
+
+      self
+    end
+
+    def enable_bracketed_paste
+      @mutex.synchronize do
+        return self if @state.bracketed_paste
+
+        @buffer << Sequences::BRACKETED_PASTE_ENABLE
+        @state.bracketed_paste = true
+      end
+
+      self
+    end
+
+    def disable_bracketed_paste
+      @mutex.synchronize do
+        return self unless @state.bracketed_paste
+
+        @buffer << Sequences::BRACKETED_PASTE_DISABLE
+        @state.bracketed_paste = false
+      end
+
+      self
+    end
+
+    def enable_focus_events
+      @mutex.synchronize do
+        return self if @state.focus_events
+
+        @buffer << Sequences::FOCUS_EVENTS_ENABLE
+        @state.focus_events = true
+      end
+
+      self
+    end
+
+    def disable_focus_events
+      @mutex.synchronize do
+        return self unless @state.focus_events
+
+        @buffer << Sequences::FOCUS_EVENTS_DISABLE
+        @state.focus_events = false
+      end
+
+      self
+    end
+
+    def show_cursor
+      @mutex.synchronize do
+        return self if @state.cursor_visible
+
+        @buffer << Sequences::CURSOR_SHOW
+        @state.cursor_visible = true
+      end
+
+      self
+    end
+
+    def hide_cursor
+      @mutex.synchronize do
+        return self unless @state.cursor_visible
+
+        @buffer << Sequences::CURSOR_HIDE
+        @state.cursor_visible = false
+      end
+
+      self
+    end
 
     def enable_mouse_capture(mode: :normal)
       @mutex.synchronize do
         return self if @state.mouse_capture == mode
 
-        result = @adapter.enable_mouse_capture(mode)
-        return self unless result
+        sequence = case mode
+        when :normal then Sequences::MOUSE_NORMAL_ENABLE
+        when :button then Sequences::MOUSE_BUTTON_ENABLE
+        when :all then Sequences::MOUSE_ALL_ENABLE
+        else Sequences::MOUSE_NORMAL_ENABLE
+        end
 
-        @buffer << result if result.is_a?(String)
+        @buffer << sequence
         @state.mouse_capture = mode
       end
 
       self
     end
 
-    def print(str, style: nil, **style_options)
-      command do
-        if style || style_options.any?
-          resolved = resolve_style(style, style_options)
-          "#{resolved}#{str}#{@adapter.reset_style}"
-        else
-          str.to_s
+    def disable_mouse_capture
+      @mutex.synchronize do
+        return self if @state.mouse_capture.nil?
+
+        sequence = case @state.mouse_capture
+        when :normal then Sequences::MOUSE_NORMAL_DISABLE
+        when :button then Sequences::MOUSE_BUTTON_DISABLE
+        when :all then Sequences::MOUSE_ALL_DISABLE
+        else Sequences::MOUSE_NORMAL_DISABLE
         end
+
+        @buffer << sequence
+        @state.mouse_capture = nil
       end
+
+      self
     end
 
-    def puts(str = "", style: nil, **style_opts)
-      command do
-        if style || style_opts.any?
-          resolved = resolve_style(style, style_opts)
-          "#{resolved}#{str}#{@adapter.reset_style}\n"
-        else
-          "#{str}\n"
-        end
+    def move_to(...) = command { Sequences.move_to(...) }
+    def move_up(...) = command { Sequences.move_up(...) }
+    def move_down(...) = command { Sequences.move_down(...) }
+    def move_forward(...) = command { Sequences.move_forward(...) }
+    def move_back(...) = command { Sequences.move_back(...) }
+    def move_home = command { Sequences::CURSOR_HOME }
+    def move_to_column(...) = command { Sequences.move_to_column(...) }
+    def move_to_row(...) = command { Sequences.move_to_row(...) }
+    def move_to_next_line(...) = command { Sequences.move_to_next_line(...) }
+    def move_to_prev_line(...) = command { Sequences.move_to_prev_line(...) }
+    def save_cursor = command { Sequences::CURSOR_SAVE }
+    def restore_cursor = command { Sequences::CURSOR_RESTORE }
+
+    def clear = command { Sequences::CLEAR }
+    def clear_below = command { Sequences::CLEAR_BELOW }
+    def clear_above = command { Sequences::CLEAR_ABOVE }
+    def clear_line = command { Sequences::CLEAR_LINE }
+    def clear_line_right = command { Sequences::CLEAR_LINE_RIGHT }
+    def clear_line_left = command { Sequences::CLEAR_LINE_LEFT }
+    def scroll_up(...) = command { Sequences.scroll_up(...) }
+    def scroll_down(...) = command { Sequences.scroll_down(...) }
+    def set_scroll_region(...) = command { Sequences.scroll_region(...) }
+    def reset_scroll_region = command { Sequences.reset_scroll_region }
+    def insert_lines(...) = command { Sequences.insert_lines(...) }
+    def delete_lines(...) = command { Sequences.delete_lines(...) }
+    def insert_chars(...) = command { Sequences.insert_chars(...) }
+    def delete_chars(...) = command { Sequences.delete_chars(...) }
+    def erase_chars(...) = command { Sequences.erase_chars(...) }
+
+    def title(...) = command { Sequences.title(...) }
+    def icon_name(...) = command { Sequences.icon_name(...) }
+    def bell = command { Sequences::BELL }
+    def notify(...) = command { Sequences.notify(...) }
+
+    def copy_to_clipboard(...) = command { Sequences.copy_to_clipboard(...) }
+
+    def hyperlink(...) = command { Sequences.hyperlink(...) }
+    def hyperlink_start(...) = command { Sequences.hyperlink_start(...) }
+    def hyperlink_end = command { Sequences.hyperlink_end }
+
+    def write(*args)
+      str = args.join
+
+      @mutex.synchronize { @buffer << str }
+
+      str.bytesize
+    end
+
+    def print(*args, style: nil, **style_options)
+      str = if style || style_options.any?
+        resolved = resolve_style(style, style_options)
+        "#{resolved}#{args.join}#{Sequences::RESET_STYLE}"
+      else
+        args.join
       end
+
+      write(str)
+
+      nil
+    end
+
+    def puts(*args, style: nil, **style_options)
+      str = if args.empty?
+        "\n"
+      elsif style || style_options.any?
+        resolved = resolve_style(style, style_options)
+        args.map { |a| "#{resolved}#{a}#{Sequences::RESET_STYLE}\n" }.join
+      else
+        args.map { |a| "#{a}\n" }.join
+      end
+
+      write(str)
+
+      nil
     end
 
     def flush
       @mutex.synchronize do
         return self if @buffer.empty?
 
-        @adapter.write(@buffer)
-        @adapter.flush
+        @output.write(@buffer)
+        @output.flush
         @buffer.clear
       end
 
@@ -176,6 +284,12 @@ module Vtx
       flush
     end
 
+    def read(...) = @input.read(...)
+    def read_nonblock(...) = @input.read_nonblock(...)
+    def readpartial(...) = @input.readpartial(...)
+    def getc = @input.getc
+    def getbyte = @input.getbyte
+
     def with_cursor
       save_cursor
       yield
@@ -183,10 +297,8 @@ module Vtx
       restore_cursor
     end
 
-    def size = @state.size ||= @adapter.size
-    def size! = @state.size = @adapter.size
-    def cursor_position = @adapter.cursor_position
-    def capabilities = @adapter.capabilities
+    def size = @state.size ||= query_size
+    def size! = @state.size = query_size
 
     def read_event(timeout: nil)
       raise NotImplementedError
@@ -201,8 +313,6 @@ module Vtx
       end
     end
 
-    # NOTE: I like how simple this method is
-    # but this could cause mutex contention?
     def reset
       disable_focus_events
       disable_bracketed_paste
@@ -217,13 +327,9 @@ module Vtx
 
     def close
       reset
-
-      @adapter.close
     end
 
-    def scoped
-      Scope.new(self)
-    end
+    def scoped = Scope.new(self)
 
     private
 
@@ -238,6 +344,17 @@ module Vtx
       return style unless style.nil?
 
       Style.new(**options)
+    end
+
+    def query_size
+      return unless @output.tty?
+
+      return @output.winsize if @output.respond_to?(:winsize)
+
+      rows = ENV["LINES"].to_i
+      cols = ENV["COLUMNS"].to_i
+
+      [rows, cols]
     end
   end
 end
