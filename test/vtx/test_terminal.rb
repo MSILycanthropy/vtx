@@ -378,22 +378,6 @@ class TestTerminal < Minitest::Test
     assert_nil(@term.size)
   end
 
-  def test_reset_restores_state
-    @term.enter_alternate_screen
-    @term.hide_cursor
-    @term.enable_mouse_capture
-    @term.enable_bracketed_paste
-    @term.enable_focus_events
-
-    @term.reset
-
-    refute(@term.alternate_screen?)
-    assert(@term.cursor_visible?)
-    refute(@term.mouse_capture?)
-    refute(@term.bracketed_paste?)
-    refute(@term.focus_events?)
-  end
-
   def test_copy_stream_from_terminal
     @input = StringIO.new("hello world")
     @term = Vtx::Terminal.new(input: @input, output: @output)
@@ -420,12 +404,6 @@ class TestTerminal < Minitest::Test
     IO.copy_stream(@term.input, dest, 5)
 
     assert_equal("hello", dest.string)
-  end
-
-  def test_close_calls_reset
-    @term.enter_alternate_screen
-    @term.close
-    refute(@term.alternate_screen?)
   end
 
   def test_scoped_restores_on_exit

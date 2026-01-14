@@ -1,5 +1,8 @@
 # frozen_string_literal: true
 
+# A small example showing the usage of Vtx::Terminal with
+# anything relatively IO-like
+
 require "bundler/setup"
 require "vtx"
 require "English"
@@ -251,4 +254,4 @@ while (event = term.read_event)
   puts "Event: #{event.inspect}"
 end
 
-term.close
+term.flush

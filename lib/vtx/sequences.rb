@@ -48,6 +48,11 @@ module Vtx
 
     BELL = "\a"
 
+    SOFT_RESET = "\e[!p"
+
+    LINE_WRAP_ENABLE = "\e[?7h"
+    LINE_WRAP_DISABLE = "\e[?7l"
+
     def move_to(row, col)
       "\e[#{row + 1};#{col + 1}H"
     end

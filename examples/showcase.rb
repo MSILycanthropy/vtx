@@ -1,5 +1,6 @@
-#!/usr/bin/env ruby
 # frozen_string_literal: true
+
+# A little showcase to confirm that Vtx::Terminal works
 
 require "bundler/setup"
 require "vtx"

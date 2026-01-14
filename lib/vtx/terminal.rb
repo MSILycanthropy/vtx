@@ -46,10 +46,34 @@ module Vtx
     def bracketed_paste? = @state.bracketed_paste
     def focus_events? = @state.focus_events
     def cursor_visible? = @state.cursor_visible
+    def line_wrap? = @state.line_wrap
+    def echo? = @state.echo
     def tty? = @input.tty? && @output.tty?
 
     def line_ending
       @state.raw_mode ? "\r\n" : "\n"
+    end
+
+    def enable_line_wrap
+      @mutex.synchronize do
+        return self if @state.line_wrap
+
+        @buffer << Sequences::LINE_WRAP_ENABLE
+        @state.line_wrap = true
+      end
+
+      self
+    end
+
+    def disable_line_wrap
+      @mutex.synchronize do
+        return self unless @state.line_wrap
+
+        @buffer << Sequences::LINE_WRAP_DISABLE
+        @state.line_wrap = false
+      end
+
+      self
     end
 
     def enable_raw_mode
@@ -93,8 +117,6 @@ module Vtx
     ensure
       enable_raw_mode if was_raw
     end
-
-    def echo? = @state.echo
 
     def echo=(value)
       @input.echo = value
@@ -276,6 +298,8 @@ module Vtx
     def hyperlink_start(...) = command { Sequences.hyperlink_start(...) }
     def hyperlink_end = command { Sequences.hyperlink_end }
 
+    def soft_reset = command { Sequences::SOFT_RESET }
+
     def write(*args)
       str = args.join
 
@@ -405,13 +429,10 @@ module Vtx
       show_cursor
       leave_alternate_screen
       disable_raw_mode
+      enable_line_wrap
       flush
 
       self
-    end
-
-    def close
-      reset
     end
 
     def scoped = Scope.new(self)

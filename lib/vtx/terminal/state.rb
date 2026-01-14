@@ -11,6 +11,7 @@ module Vtx
         @focus_events = false
         @cursor_visible = true
         @echo = true
+        @line_wrap = true
         @size = nil
       end
 
@@ -21,6 +22,7 @@ module Vtx
         :focus_events,
         :cursor_visible,
         :echo,
+        :line_wrap,
         :size
 
       def mouse_capture? = !@mouse_capture.nil?
@@ -29,6 +31,7 @@ module Vtx
       def bracketed_paste? = @bracketed_paste
       def focus_events? = @focus_events
       def echo? = @echo
+      def line_wrap? = @line_wrap
       def cursor_visible? = @cursor_visible
     end
   end
