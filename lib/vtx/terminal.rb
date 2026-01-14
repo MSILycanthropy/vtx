@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "io/console"
+require "forwardable"
 
 module Vtx
   # Main terminal interface
@@ -73,6 +74,39 @@ module Vtx
       end
 
       self
+    end
+
+    def raw
+      was_raw = @state.raw_mode
+      enable_raw_mode
+
+      yield self
+    ensure
+      disable_raw_mode unless was_raw
+    end
+
+    def cooked
+      was_raw = @state.raw_mode
+      disable_raw_mode
+
+      yield self
+    ensure
+      enable_raw_mode if was_raw
+    end
+
+    def echo? = @state.echo
+
+    def echo=(value)
+      @input.echo = value
+      @state.echo = value
+    end
+
+    def noecho
+      was_echo = @state.echo
+      self.echo = false
+      yield self
+    ensure
+      self.echo = was_echo
     end
 
     def enter_alternate_screen
@@ -250,6 +284,12 @@ module Vtx
       str.bytesize
     end
 
+    def <<(str)
+      write(str)
+
+      self
+    end
+
     def print(*args, style: nil, **style_options)
       str = if style || style_options.any?
         resolved = resolve_style(style, style_options)
@@ -305,15 +345,16 @@ module Vtx
     def read(...) = @input.read(...)
     def read_nonblock(...) = @input.read_nonblock(...)
     def readpartial(...) = @input.readpartial(...)
+    def wait_readable(...) = @input.wait_readable(...)
+
+    def gets(...) = @input.gets(...)
     def getc = @input.getc
+    def getch = @input.getch
     def getbyte = @input.getbyte
 
-    def with_cursor
-      save_cursor
-      yield
-    ensure
-      restore_cursor
-    end
+    def winsize = @output.winsize
+    def closed? = @output.closed?
+    def eof? = @input.eof?
 
     def size = @state.size ||= query_size
     def refresh_size! = @state.size = query_size
